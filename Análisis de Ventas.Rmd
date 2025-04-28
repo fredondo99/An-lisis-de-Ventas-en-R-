@@ -1,0 +1,187 @@
+---
+title: "Análisis de Ventas"
+author: "Fabian Redondo"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Introducción
+
+Breve descripción del objetivo del proyecto, origen de los datos y qué se va a analizar.
+
+---
+# 1. Carga de Librerías y Datos
+library(readr)
+data1 <- read_delim("-R Data Analyst/Proyecto/sales_data_sample_proy_2021.csv", 
+                                          delim = ";", escape_double = FALSE, trim_ws = TRUE)
+data2 <- read_delim("-R Data Analyst/Proyecto/sales_data_sample_proy_2022.csv", 
+                                          delim = ";", escape_double = FALSE, trim_ws = TRUE)
+data3 <- read_delim("-R Data Analyst/Proyecto/sales_data_sample_proy_2023.csv", 
+                                          delim = ";", escape_double = FALSE, trim_ws = TRUE)
+head(data2)
+str(data2)
+summary(data2) 
+# 2. Limpieza de los data dataframes.
+library(dplyr)
+data1 <- data1 %>%
+  select(-CUSTOMERNAME, -PHONE, -ADDRESSLINE1, -ADDRESSLINE2, -CITY,
+         -STATE, -POSTALCODE, -TERRITORY, -CONTACTLASTNAME, -CONTACTFIRSTNAME, -MSRP)
+data2 <- data2 %>%
+  select(-CUSTOMERNAME, -PHONE, -ADDRESSLINE1, -ADDRESSLINE2, -CITY,
+         -STATE, -POSTALCODE, -TERRITORY, -CONTACTLASTNAME, -CONTACTFIRSTNAME, -MSRP)
+data3 <- data3 %>%
+  select(-CUSTOMERNAME, -PHONE, -ADDRESSLINE1, -ADDRESSLINE2, -CITY,
+         -STATE, -POSTALCODE, -TERRITORY, -CONTACTLASTNAME, -CONTACTFIRSTNAME, -MSRP)
+colSums(is.na(data1))
+colSums(is.na(data2))
+colSums(is.na(data3))
+data1 <- na.omit(data1)
+data2 <- na.omit(data2)
+data3 <- na.omit(data3)
+data_total <- bind_rows(data1, data2, data3)
+dim(data_total)
+colSums(is.na(data_total))
+
+# 3. EDA (Exploratory Data Analyst)
+install.packages("ggplot2")
+library ("ggplot2")
+library(readxl)
+library(ggplot2)
+library(dplyr)
+summary(data_total)
+str(data_total)
+# Distribución de las VENTAS:
+ggplot(data_total, aes(x = SALES)) +
+  geom_histogram(fill = "#3498db", color = "white", bins = 30) +
+  labs(title = "Distribución de Ventas",
+       x = "Monto de Ventas ($)",
+       y = "Frecuencia") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    panel.grid.minor = element_blank()
+  )
+# Relación entre ORDENES y las VENTAS:
+ggplot(data_total, aes(x = QUANTITYORDERED, y = SALES)) +
+  geom_point(alpha = 0.5, color = "#E74C3C", size = 2) +
+  labs(title = "Relación entre Cantidad Ordenada y Ventas",
+       x = "Cantidad Ordenada",
+       y = "Ventas ($)") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5)
+  )
+# ventas por línea de producto:
+ggplot(data_total, aes(x = reorder(PRODUCTLINE, SALES, FUN = median), y = SALES)) +
+  geom_boxplot(fill = "#69b3a2", color = "#1c1c1c", outlier.color = "red", outlier.size = 2) +
+  labs(title = "Distribución de Ventas por Línea de Producto",
+       x = "Línea de Producto",
+       y = "Ventas ($)") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    axis.text.x = element_text(angle = 25, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
+# Evolución de ventas en el tiempo:
+data_total$ORDERDATE <- as.Date(data_total$ORDERDATE, "%d/%m/%Y")
+data_total$y_m <- format(data_total$ORDERDATE, "%Y-%m")
+ventas_mensuales <- data_total %>%
+  group_by(y_m) %>%
+  summarise(SALES = sum(SALES, na.rm = TRUE))
+ggplot(ventas_mensuales, aes(x = y_m, y = SALES, group = 1)) +
+  geom_line(color = "#1f77b4", size = 1.2) +  # Línea azul suave
+  geom_point(color = "#ff7f0e", size = 3) +   # Puntos naranjas grandes
+  labs(title = "Tendencia de Ventas Mensuales",
+       x = "Año-Mes",
+       y = "Ventas Totales ($)") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(face = "bold", size = 16),
+    panel.grid.minor = element_blank()
+  )  
+# Venta por País
+ventas_por_pais <- data_total %>%
+  group_by(COUNTRY) %>%
+  summarise(SALES = sum(SALES, na.rm = TRUE)) %>%
+  arrange(desc(SALES))
+ggplot(ventas_por_pais, aes(x = reorder(COUNTRY, SALES), y = SALES)) +
+  geom_col(fill = "#F39C12") +  # Color naranja suave
+  labs(title = "Ventas Totales por País",
+       x = "País",
+       y = "Ventas ($)") +
+  coord_flip() +  # Barras horizontales
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    axis.text.y = element_text(size = 11),
+    axis.text.x = element_text(size = 11)
+  )
+# 4. KPI´S (Key Perform Indicators)
+# KPI 1: Total de Ventas
+sum(data_total$SALES)
+# KPI 2: Promedio por orden en dólares
+mean(data_total$SALES)
+# KPI 3: Porcentaje de órdenes canceladas
+mean(data_total$STATUS == "Cancelled") * 100
+# KPI 4: Producto más vendido en cantidad
+producto_top <- data_total %>%
+  group_by(PRODUCTCODE) %>%
+  summarise(total_cantidad = sum(QUANTITYORDERED)) %>%
+  arrange(desc(total_cantidad)) %>%
+  slice(1)
+producto_top
+# KPI 5: Línea de producto con mayores ventas ($)
+linea_top <- data_total %>%
+  group_by(PRODUCTLINE) %>%
+  summarise(total_ventas = sum(SALES)) %>%
+  arrange(desc(total_ventas)) %>%
+  slice(1)
+linea_top
+# KPI 6:  Mes con más ventas totales
+data_total$MES <- format(data_total$ORDERDATE, "%Y-%m")
+mes_top <- data_total %>%
+  group_by(MES) %>%
+  summarise(ventas_mes = sum(SALES)) %>%
+  arrange(desc(ventas_mes)) %>%
+  slice(1)
+mes_top
+# KPI 7: País con más ventas
+pais_top <- data_total %>%
+  group_by(COUNTRY) %>%
+  summarise(ventas_pais = sum(SALES)) %>%
+  arrange(desc(ventas_pais)) %>%
+  slice(1)
+pais_top
+# KPI 8: Porcentaje de órdenes en estado "On Hold"
+porcentaje_on_hold <- mean(data_total$STATUS == "On Hold") * 100
+porcentaje_on_hold                                        
+# Proyección de Ventas
+modelo <- lm(SALES ~ QUANTITYORDERED, data = data_total)
+summary(modelo)
+# Agregar predicción
+data_total$PREDICCION <- predict(modelo, newdata = data_total)
+# Gráfico de predicción
+ggplot(data_total, aes(x = QUANTITYORDERED, y = SALES)) +
+  geom_point(alpha = 0.6, color = "#E74C3C", size = 3, shape = 19) +  # Puntos más definidos
+  geom_line(aes(y = PREDICCION), color = "#3498DB", size = 1.5, linetype = "solid") +  # Línea más destacada
+  labs(
+    title = "Relación entre Cantidad Ordenada y Ventas",
+    subtitle = "Puntos: Datos observados | Línea: Modelo predictivo",
+    x = "Cantidad Ordenada (unidades)",
+    y = "Ventas Totales ($)",
+    caption = "Fuente: Datos de ventas corporativas"
+  ) +
+  scale_y_continuous(labels = scales::dollar) +  # Formato de dinero para el eje Y
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 16, color = "#2C3E50"),
+    plot.subtitle = element_text(hjust = 0.5, color = "#7F8C8D"),
+    axis.title = element_text(color = "#34495E"),
+    axis.text = element_text(color = "#34495E"),
+    panel.grid.major = element_line(color = "gray90", linewidth = 0.2),
+    panel.grid.minor = element_blank(),
+    plot.caption = element_text(face = "italic", color = "#7F8C8D"),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
